@@ -56,3 +56,13 @@ tests/test.sh
 
 The GitHub Actions workflow runs ShellCheck and the fixture-based test suite on
 every push and pull request.
+
+## Attribution
+
+This project is a modified version of
+[arfoll/unrarall](https://github.com/arfoll/unrarall), originally created to
+recursively extract and clean up RAR archives.
+
+The current version revises the implementation, archive detection, testing,
+documentation, and CI workflow. It remains licensed under the GNU General
+Public License, version 3.
