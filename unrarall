@@ -165,9 +165,14 @@ while IFS= read -r -d '' archive; do
       (( FORCE )) || { rm -rf -- "$tmp"; ((failures++)); warn "extraction failed: $archive"; continue; }
     fi
   elif extract_with_passwords "$archive" "$tmp" >/dev/null 2>&1; then :; else
-    (( FORCE )) && { warn "extraction failed but continuing due to --force: $archive"; } || {
-    rm -rf -- "$tmp"; ((failures++)); warn "extraction failed: $archive"; continue
-    }
+    if (( FORCE )); then
+      warn "extraction failed but continuing due to --force: $archive"
+    else
+      rm -rf -- "$tmp"
+      ((failures++))
+      warn "extraction failed: $archive"
+      continue
+    fi
   fi
   while IFS= read -r -d '' file; do
     rel=${file#"$tmp"/}
