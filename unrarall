@@ -146,9 +146,12 @@ cleanup() {
 }
 
 log "Using $BACKEND over directory \"$ROOT\""
+# Find archive entry points without splitting filenames on whitespace.
 while IFS= read -r -d '' archive; do
+  # Only process the first volume; the backend locates the remaining volumes.
   is_first_volume "$archive" || continue
   key=$(archive_base "$archive")
+  # Avoid processing the same archive set more than once.
   [[ ${seen[$key]:-0} == 1 ]] && continue
   seen[$key]=1
   dir=${archive%/*}
@@ -159,6 +162,8 @@ while IFS= read -r -d '' archive; do
   fi
   log "Extracting: $archive"
   if (( DRY )); then continue; fi
+  # Extract away from the destination so failed or partial archives do not
+  # overwrite existing files.
   tmp=$(mktemp -d "$dir/.unrarall.XXXXXX")
   if (( VERBOSE )); then
     if ! extract_with_passwords "$archive" "$tmp"; then
@@ -174,17 +179,21 @@ while IFS= read -r -d '' archive; do
       continue
     fi
   fi
+  # Move only files from a successful temporary extraction into the target.
   while IFS= read -r -d '' file; do
     rel=${file#"$tmp"/}
     mkdir -p "$target/$(dirname "$rel")"
     mv -n -- "$file" "$target/$rel"
   done < <(find "$tmp" -type f -print0)
   rm -rf -- "$tmp"
+  # Cleanup runs only after extraction and file movement have completed.
   cleanup "$archive" "$dir"
   ((success++))
   log "OK: $archive"
 done < <(find "$ROOT" -type f \( -iname '*.rar' -o -iname '*.001' \) -print0)
 
+# Return failure when nothing extracted, or when any archive failed unless the
+# caller explicitly requested that individual failures be allowed.
 if (( success == 0 )); then log "no rar files extracted"; exit 1; fi
 log "$success archive(s) extracted"
 if (( failures && !ALLOW_FAILURES )); then exit 1; fi
