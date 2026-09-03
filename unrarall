@@ -109,12 +109,23 @@ already_extracted() {
 }
 
 extract() {
-  local archive=$1 target=$2 mode=e
+  local archive=$1 target=$2 password=$3 mode=e
   (( FULL_PATH )) && mode=x
   case $BACKEND in
-    unrar|rar) "$BACKEND" "$mode" -o+ -y -p- -- "$archive" "$target/" ;;
-    7z) 7z x -y -p -- "$archive" "-o$target" ;;
+    unrar|rar) "$BACKEND" "$mode" -o+ -y "-p$password" -- "$archive" "$target/" ;;
+    7z) 7z x -y "-p$password" -- "$archive" "-o$target" ;;
   esac
+}
+
+extract_with_passwords() {
+  local archive=$1 target=$2 password
+  if [[ -s $PASSWORD_FILE ]]; then
+    while IFS= read -r password || [[ -n $password ]]; do
+      extract "$archive" "$target" "$password" && return 0
+    done < "$PASSWORD_FILE"
+    return 1
+  fi
+  extract "$archive" "$target" "-"
 }
 
 cleanup() {
@@ -150,9 +161,13 @@ while IFS= read -r -d '' archive; do
   if (( DRY )); then continue; fi
   tmp=$(mktemp -d "$dir/.unrarall.XXXXXX")
   if (( VERBOSE )); then
-    extract "$archive" "$tmp"
-  elif extract "$archive" "$tmp" >/dev/null 2>&1; then :; else
+    if ! extract_with_passwords "$archive" "$tmp"; then
+      (( FORCE )) || { rm -rf -- "$tmp"; ((failures++)); warn "extraction failed: $archive"; continue; }
+    fi
+  elif extract_with_passwords "$archive" "$tmp" >/dev/null 2>&1; then :; else
+    (( FORCE )) && { warn "extraction failed but continuing due to --force: $archive"; } || {
     rm -rf -- "$tmp"; ((failures++)); warn "extraction failed: $archive"; continue
+    }
   fi
   while IFS= read -r -d '' file; do
     rel=${file#"$tmp"/}
