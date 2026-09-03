@@ -12,9 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ludeeusb/shellcheck@master
-        with:
-          scandir: .
+      - name: Install ShellCheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: Run ShellCheck
+        run: shellcheck unrarall tests/test.sh
 
   tests:
     runs-on: ubuntu-latest
