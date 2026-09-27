@@ -150,31 +150,31 @@ log "Using $BACKEND over directory \"$ROOT\""
 while IFS= read -r -d '' archive; do
   # Only process the first volume; the backend locates the remaining volumes.
   is_first_volume "$archive" || continue
-  key=$(archive_base "$archive")
-  # Avoid processing the same archive set more than once.
+  dir=${archive%/*}
+  key="$dir/$(archive_base "$archive")"
+  # Avoid processing the same archive set, but keep same-named sets separate.
   [[ ${seen[$key]:-0} == 1 ]] && continue
   seen[$key]=1
-  dir=${archive%/*}
   target=${OUTPUT:-$dir}
   if (( SKIP_IF_EXISTS )) && already_extracted "$archive" "$target"; then
     log "Skipping already extracted archive: $archive"
     continue
   fi
   log "Extracting: $archive"
-  if (( DRY )); then continue; fi
+  if (( DRY )); then success=$((success + 1)); continue; fi
   # Extract away from the destination so failed or partial archives do not
   # overwrite existing files.
   tmp=$(mktemp -d "$dir/.unrarall.XXXXXX")
   if (( VERBOSE )); then
     if ! extract_with_passwords "$archive" "$tmp"; then
-      (( FORCE )) || { rm -rf -- "$tmp"; ((failures++)); warn "extraction failed: $archive"; continue; }
+      (( FORCE )) || { rm -rf -- "$tmp"; failures=$((failures + 1)); warn "extraction failed: $archive"; continue; }
     fi
   elif extract_with_passwords "$archive" "$tmp" >/dev/null 2>&1; then :; else
     if (( FORCE )); then
       warn "extraction failed but continuing due to --force: $archive"
     else
       rm -rf -- "$tmp"
-      ((failures++))
+      failures=$((failures + 1))
       warn "extraction failed: $archive"
       continue
     fi
@@ -187,13 +187,14 @@ while IFS= read -r -d '' archive; do
   done < <(find "$tmp" -type f -print0)
   rm -rf -- "$tmp"
   # Cleanup runs only after extraction and file movement have completed.
-  cleanup "$archive" "$dir"
-  ((success++))
+  cleanup "$archive" "$dir" || warn "cleanup failed: $dir"
+  success=$((success + 1))
   log "OK: $archive"
 done < <(find "$ROOT" -type f \( -iname '*.rar' -o -iname '*.001' \) -print0)
 
 # Return failure when nothing extracted, or when any archive failed unless the
 # caller explicitly requested that individual failures be allowed.
 if (( success == 0 )); then log "no rar files extracted"; exit 1; fi
+if (( DRY )); then log "$success archive(s) would be extracted"; exit 0; fi
 log "$success archive(s) extracted"
 if (( failures && !ALLOW_FAILURES )); then exit 1; fi
