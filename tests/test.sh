@@ -31,6 +31,6 @@ assert_file "$fixture/Movie With Spaces.txt"
 assert_absent "$fixture/Movie With Spaces.nfo"
 assert_absent "$fixture/Covers"
 assert_absent "$fixture/Sample"
-assert_file "$fixture/archive.rar"
+assert_absent "$fixture/archive.rar"
 
 printf 'PASS: archive discovery, multipart extraction, dry-run, and cleanup\n'
