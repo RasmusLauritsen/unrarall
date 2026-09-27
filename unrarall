@@ -161,7 +161,7 @@ while IFS= read -r -d '' archive; do
     continue
   fi
   log "Extracting: $archive"
-  if (( DRY )); then continue; fi
+  if (( DRY )); then success=$((success + 1)); continue; fi
   # Extract away from the destination so failed or partial archives do not
   # overwrite existing files.
   tmp=$(mktemp -d "$dir/.unrarall.XXXXXX")
@@ -195,5 +195,6 @@ done < <(find "$ROOT" -type f \( -iname '*.rar' -o -iname '*.001' \) -print0)
 # Return failure when nothing extracted, or when any archive failed unless the
 # caller explicitly requested that individual failures be allowed.
 if (( success == 0 )); then log "no rar files extracted"; exit 1; fi
+if (( DRY )); then log "$success archive(s) would be extracted"; exit 0; fi
 log "$success archive(s) extracted"
 if (( failures && !ALLOW_FAILURES )); then exit 1; fi
