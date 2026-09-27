@@ -10,13 +10,13 @@ assert_file() { [[ -f $1 ]] || fail "missing file: $1"; }
 assert_absent() { [[ ! -e $1 ]] || fail "unexpected path: $1"; }
 
 command -v unrar >/dev/null || { printf 'SKIP: unrar is not installed\n'; exit 0; }
-command -v bsdtar >/dev/null || { printf 'SKIP: bsdtar is not installed\n'; exit 0; }
+command -v rar >/dev/null || { printf 'SKIP: rar is not installed\n'; exit 0; }
 
 fixture=$TMP/"Movie With Spaces"
 mkdir -p "$fixture/Covers" "$fixture/Sample"
 
 printf 'test payload\n' > "$fixture/Movie With Spaces.txt"
-bsdtar -cf "$fixture/archive.rar" -C "$fixture" "Movie With Spaces.txt"
+(cd "$fixture" && rar a -idq archive.rar "Movie With Spaces.txt")
 rm -f "$fixture/Movie With Spaces.txt"
 
 "$SCRIPT" --backend=unrar "$fixture" >/dev/null
